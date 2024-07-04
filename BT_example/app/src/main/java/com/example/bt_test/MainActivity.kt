@@ -16,12 +16,15 @@ import android.widget.Button
 import android.widget.ListView
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import java.io.IOException
+import java.io.InputStream
+import java.io.OutputStream
 import java.util.UUID
 
 class MainActivity : AppCompatActivity() {
@@ -30,6 +33,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var arrayAdapter: ArrayAdapter<String>
     private val deviceList: MutableList<String> = mutableListOf()
     private val deviceMap: MutableMap<String, BluetoothDevice> = mutableMapOf()
+    private var connectedThread: ConnectedThread? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -112,6 +116,8 @@ class MainActivity : AppCompatActivity() {
             // 연결 성공 처리
             Toast.makeText(this, "연결 성공: ${device.name}", Toast.LENGTH_SHORT).show()
             Log.d("SON", "연결 성공: ${device.name}")
+            connectedThread = ConnectedThread(socket)
+            connectedThread?.start()
             saveDeviceAddress(device.address)
         } catch (e: IOException) {
             e.printStackTrace()
@@ -187,6 +193,66 @@ class MainActivity : AppCompatActivity() {
                 // 권한이 거부되었을 때의 처리
                 Toast.makeText(this, "권한이 필요합니다", Toast.LENGTH_SHORT).show()
             }
+        }
+    }
+
+    // 연결 끊김 시 팝업을 띄우는 메서드
+    private fun showDisconnectDialog() {
+        runOnUiThread {
+            val builder = AlertDialog.Builder(this@MainActivity)
+            builder.setTitle("연결 끊김")
+            builder.setMessage("블루투스 연결이 끊어졌습니다.")
+            builder.setPositiveButton("확인") { dialog, _ ->
+                dialog.dismiss()
+            }
+            builder.show()
+        }
+    }
+
+    // 데이터를 전송하고 수신하는 스레드 클래스
+    private inner class ConnectedThread(private val socket: BluetoothSocket) : Thread() {
+        private val inputStream: InputStream = socket.inputStream
+        private val outputStream: OutputStream = socket.outputStream
+        private val buffer = ByteArray(1024) // 버퍼 크기 설정
+
+        override fun run() {
+            var numBytes: Int // 읽은 바이트 수
+            try {
+                while (true) {
+                    // 입력 스트림에서 데이터를 읽음
+                    numBytes = inputStream.read(buffer)
+                    val readMessage = String(buffer, 0, numBytes)
+                    Log.d("SON", "수신된 메시지: $readMessage")
+                }
+            } catch (e: IOException) {
+                Log.e("SON", "입출력 오류", e)
+                connectionLost()
+                cancel() // 연결 끊김 시 소켓 닫기
+            }
+        }
+
+        // 데이터 전송 메서드
+        fun write(message: String) {
+            try {
+                outputStream.write(message.toByteArray())
+                Log.d("SON", "보낸 메시지: $message")
+            } catch (e: IOException) {
+                Log.e("SON", "데이터 전송 오류", e)
+            }
+        }
+
+        // 연결 해제 메서드
+        fun cancel() {
+            try {
+                socket.close()
+            } catch (e: IOException) {
+                Log.e("SON", "소켓 닫기 오류", e)
+            }
+        }
+
+        // 연결 끊김 시 호출되는 메서드
+        private fun connectionLost() {
+            showDisconnectDialog()
         }
     }
 }
