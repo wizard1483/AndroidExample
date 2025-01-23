@@ -24,7 +24,11 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 
 // Device data class
-data class Device(val name: String, val address: String)
+data class Device(
+    val name: String,
+    val address: String,
+    var isConnected: Boolean = false
+)
 
 // Device Adapter for RecyclerView
 class DeviceAdapter(
@@ -42,6 +46,14 @@ class DeviceAdapter(
         holder.deviceName.text = device.name
         holder.deviceAddress.text = device.address
 
+        // 연결 상태에 따라 배경색 변경
+        if (device.isConnected) {
+            holder.itemView.setBackgroundColor(ContextCompat.getColor(holder.itemView.context, R.color.sky_blue))
+        } else {
+            holder.itemView.setBackgroundColor(ContextCompat.getColor(holder.itemView.context, android.R.color.transparent))
+        }
+
+        // 항목 클릭 시 연결 시도
         holder.itemView.setOnClickListener {
             onDeviceClick(device)
         }
@@ -73,6 +85,9 @@ class MainActivity : AppCompatActivity() {
                 runOnUiThread {
                     Toast.makeText(applicationContext, "Connected to ${gatt.device.name}", Toast.LENGTH_SHORT).show()
                 }
+
+                // 서비스 탐색 시작
+                gatt.discoverServices()
             } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
                 Log.d(TAG, "Disconnected from ${gatt.device.name}")
                 runOnUiThread {
@@ -85,6 +100,37 @@ class MainActivity : AppCompatActivity() {
             super.onServicesDiscovered(gatt, status)
             if (status == BluetoothGatt.GATT_SUCCESS) {
                 Log.d(TAG, "Services discovered")
+                val services = gatt.services
+                for (service in services) {
+                    Log.d(TAG, "Service: ${service.uuid}")
+                    for (characteristic in service.characteristics) {
+                        Log.d(TAG, "  Characteristic: ${characteristic.uuid}")
+
+                        // 데이터를 읽을 수 있는 특성 찾기
+                        if (characteristic.properties and BluetoothGattCharacteristic.PROPERTY_READ != 0) {
+                            gatt.readCharacteristic(characteristic)
+                        }
+                    }
+                }
+            } else {
+                Log.e(TAG, "Service discovery failed with status: $status")
+            }
+        }
+
+        override fun onCharacteristicRead(
+            gatt: BluetoothGatt,
+            characteristic: BluetoothGattCharacteristic,
+            value: ByteArray,
+            status: Int
+        ) {
+            super.onCharacteristicRead(gatt, characteristic, value, status)
+
+            if (status == BluetoothGatt.GATT_SUCCESS) {
+                val value = characteristic.value
+                val data = value?.joinToString(separator = " ") { byte -> "%02x".format(byte)}
+                Log.d(TAG, "  Characteristic: ${characteristic.uuid}")
+
+
             }
         }
     }
@@ -195,6 +241,10 @@ class MainActivity : AppCompatActivity() {
     private fun connectToDevice(device: Device) {
         val bluetoothDevice = bluetoothAdapter.getRemoteDevice(device.address)
         bluetoothGatt = bluetoothDevice.connectGatt(this, false, gattCallback)
+
+        // 연결 상태 변경 및 리스트 업데이트
+        device.isConnected = true
+        deviceAdapter.notifyDataSetChanged()
         Log.d(TAG, "Connecting to device: ${device.name}")
     }
 
