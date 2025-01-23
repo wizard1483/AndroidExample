@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="vertical"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:padding="8dp">
+
+    <!-- 서비스 UUID -->
+    <TextView
+        android:id="@+id/serviceUUID"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Service UUID"
+        android:textSize="16sp"
+        android:textColor="#000"
+        android:padding="8dp" />
+
+    <!-- 하위 RecyclerView (Characteristic 리스트) -->
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/characteristicRecyclerView"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:nestedScrollingEnabled="false" />
+</LinearLayout>

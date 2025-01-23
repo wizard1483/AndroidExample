@@ -24,6 +24,8 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Ble_test"
         tools:targetApi="31">
+
+        <!-- MainActivity 등록 -->
         <activity
             android:name=".MainActivity"
             android:exported="true">
@@ -33,6 +35,8 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <!-- UUIDListActivity 등록 -->
+        <activity android:name=".UUIDListActivity" />
     </application>
 
 </manifest>
